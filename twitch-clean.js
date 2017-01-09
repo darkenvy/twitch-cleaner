@@ -9,6 +9,9 @@
 // // inner text
 // $('.chat-lines')[0].children[x].children[5].innerText
 
+// emojis
+// $('.chat-lines')[0].children[x].children[5].children
+// $('.chat-lines')[0].children[x].children[5].children[0].children[0].style = 'opacity: 0.1'
 
 // var lastMessage = $('.chat-lines')[0].children.length-1
 
@@ -69,10 +72,12 @@
 
 
 function Message(idx) {
+  this.index = idx;
   this.text = $('.chat-lines')[0].children[idx].children[5].innerText;
-  this.rating = spamRating(this.text);
   this.nameColor = $('.chat-lines')[0].children[idx].children[3].style.color;
   this.textColor = $('.chat-lines')[0].children[idx].children[5].style.color;
+  this.emojis = $('.chat-lines')[0].children[idx].children[5].children;
+  this.rating = this.spamRating(this.text);
 }
 
 Message.prototype= {
@@ -85,6 +90,27 @@ Message.prototype= {
         if (/[A-Z!]/.exec(message[i])) amountOfCaps += 1;
       }
       return (amountOfCaps / message.length > 0.5) ? 3 : 0;
+    }
+
+    var isBlacklist = function() {
+      var sentance = message.match(/\w+/g);
+      var blacklist = [
+        "free",
+        "suck",
+        "fuck",
+        "shit",
+        "stfu",
+        "spam",
+        "lul",
+        "lulz"
+      ]
+
+      for (var each in sentance) {
+        if (blacklist.indexOf(sentance[each]) !== -1) {
+          return 7;
+        }
+      }
+      return 0;
     }
 
     // Duplicate Words is bugged because the object that is created has 
@@ -112,8 +138,10 @@ Message.prototype= {
     if (message[0] === "@") score = 3;
     if (message.length < 5) score += 1;
     if (message.length > 100) score += parseInt(message.length / 100);
-    if (message.match(/\w+/g).length === 1) score += 1;
+    if (message.match(/\w+/g) && message.match(/\w+/g).length === 1) score += 1;
     if (/http/.test(message)) score += 3;
+    if (this.emojis && this.emojis.length > 1) score += this.emojis.length;
+    score += isBlacklist();
     score += isMostlyCaps();
     // score += duplicateWords();
 
@@ -123,6 +151,7 @@ Message.prototype= {
   generateColor: function(currentColor, spamRating) {
     var rgbColor = currentColor.match(/(\d+),\s?(\d+),\s?(\d+)/);
     var weight = spamRating >= 10 ? 0.1 : (10-spamRating)/10;
+    if (!rgbColor) rgbColor = [null, 137, 131, 149];
     return [
         parseInt( parseInt(rgbColor[1]) * weight ),
         parseInt( parseInt(rgbColor[2]) * weight ),
@@ -130,19 +159,30 @@ Message.prototype= {
       ];
   },
 
-  setColor: function(color) {
-    var newNameColor = generateColor(this.nameColor, this.rating)
-    var newTextColor = generateColor(this.textColor, this.rating)
+  setColor: function() {
+    var newNameColor = this.generateColor(this.nameColor, this.rating)
+    var newTextColor = this.generateColor(this.textColor, this.rating)
     // set name color
-    $('.chat-lines')[0].children[idx].children[3].style = "color: rgb(" + newNameColor.toString() + ")";
+    $('.chat-lines')[0].children[this.index].children[3].style = "color: rgb(" + newNameColor.toString() + ")";
     // set text color
-    $('.chat-lines')[0].children[idx].children[5].style = "color: rgb(" + newTextColor.toString() + ")";
+    $('.chat-lines')[0].children[this.index].children[5].style = "color: rgb(" + newTextColor.toString() + ")";
+  },
+
+  setEmojiTransparency: function() {
+    var premodification = this.rating + 4;
+    var inverseRating = premodification >= 10 ? 0.1 : (10-premodification)/10
+    for (var i=0; i<this.emojis.length; i++) {
+      this.emojis[i].children[0].style = 'opacity: ' + inverseRating;
+    }
   }
+
 }
 
 var latestIdx = $('.chat-lines')[0].children.length-1;
 var lastMessage = new Message(latestIdx);
 console.log(lastMessage.rating, lastMessage.text);
+lastMessage.setColor();
+lastMessage.setEmojiTransparency();
 
 
 // var lastMessageInt = $('.chat-lines')[0].children.length-1;
